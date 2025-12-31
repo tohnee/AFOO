@@ -1,43 +1,86 @@
+// Declare chrome global to fix type errors
+declare const chrome: any;
+
 /**
- * Chrome Extension API Mock
+ * Chrome Extension Isomorphic Bridge
  * 
- * This file simulates the message passing between the Extension (Sidebar)
- * and the Content Script (Browser Page).
- * 
- * In a real extension, this would be replaced by actual chrome.runtime.sendMessage
- * and chrome.tabs.sendMessage calls.
+ * This bridge automatically detects the environment:
+ * 1. REAL MODE: If `chrome.runtime` exists, it calls actual Chrome APIs.
+ * 2. MOCK MODE: If not, it uses an internal event bus for the web simulation.
  */
+
+// Detect if we are running in a real Chrome Extension environment
+const isExtension = typeof chrome !== 'undefined' && !!chrome.runtime && !!chrome.runtime.onMessage;
 
 type MessageListener = (message: any, sender: any, sendResponse: (response?: any) => void) => void;
 
 class ChromeBridge {
-  private listeners: MessageListener[] = [];
+  private mockListeners: MessageListener[] = [];
 
-  // Simulate chrome.runtime.onMessage.addListener
+  constructor() {
+    if (isExtension) {
+      console.log('[[Synapse Bridge]] Running in EXTENSION mode.');
+    } else {
+      console.log('[[Synapse Bridge]] Running in SIMULATOR mode.');
+    }
+  }
+
+  // --- Event Listener Wrapper ---
   onMessage = {
     addListener: (callback: MessageListener) => {
-      this.listeners.push(callback);
+      if (isExtension) {
+        chrome.runtime.onMessage.addListener(callback);
+      } else {
+        this.mockListeners.push(callback);
+      }
     },
     removeListener: (callback: MessageListener) => {
-      this.listeners = this.listeners.filter(l => l !== callback);
+      if (isExtension) {
+        chrome.runtime.onMessage.removeListener(callback);
+      } else {
+        this.mockListeners = this.mockListeners.filter(l => l !== callback);
+      }
     }
   };
 
-  // Simulate chrome.tabs.sendMessage (Sending from Sidebar -> Content Script)
-  sendMessageToTab = (tabId: number, message: any) => {
-    console.log('[ChromeBridge] Extension sent message:', message);
-    // In our single-page mock, we broadcast to all listeners
-    this.listeners.forEach(listener => {
-      listener(message, { id: 'mock-sender' }, (response) => {
-        console.log('[ChromeBridge] Response received:', response);
+  // --- Sender Wrapper ---
+  
+  /**
+   * Sends a message to the currently active tab (Content Script).
+   */
+  sendMessageToActiveTab = (message: any) => {
+    if (isExtension) {
+      // Real API: Query active tab -> Send Message
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs: any[]) => {
+        if (tabs[0]?.id) {
+          console.log('[[Synapse Bridge]] Sending to Tab ID:', tabs[0].id, message);
+          chrome.tabs.sendMessage(tabs[0].id, message).catch((err: any) => {
+             // Swallow error if content script isn't ready (common in dev)
+             console.warn('Content script not ready yet:', err);
+          });
+        }
       });
-    });
+    } else {
+      // Mock API: Broadcast to internal listeners (The ContentScript component)
+      console.log('[[Synapse Bridge]] Mock Broadcast:', message);
+      this.mockListeners.forEach(listener => {
+        listener(message, { id: 'mock-sender' }, (response) => {
+          console.log('[[Synapse Bridge]] Mock Response:', response);
+        });
+      });
+    }
   };
 
-  // Simulate chrome.runtime.sendMessage (Sending from Content Script -> Extension/Background)
-  sendMessageToBackground = (message: any) => {
-    // For now, we reuse the same bus, but logically this flows the other way
-    this.sendMessageToTab(0, message); 
+  /**
+   * Sends a message to the Background Script or Side Panel.
+   */
+  sendMessageToRuntime = (message: any) => {
+    if (isExtension) {
+      chrome.runtime.sendMessage(message);
+    } else {
+      // In simulator, everything is in one memory space, so we just treat it as a tab message for now
+      this.sendMessageToActiveTab(message);
+    }
   };
 }
 

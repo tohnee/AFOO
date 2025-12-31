@@ -6,7 +6,6 @@ import { mockChrome } from '../lib/chrome-bridge';
 
 interface TabPipesProps {
   browserContent: string;
-  // REMOVED: onRunPipe prop. We now use message passing.
 }
 
 export const TabPipes: React.FC<TabPipesProps> = ({ browserContent }) => {
@@ -47,14 +46,13 @@ export const TabPipes: React.FC<TabPipesProps> = ({ browserContent }) => {
       }
 
       addLog(`[Switch] Focusing tab: ${pipe.target}`);
-      // In a real extension, we would use chrome.tabs.update to switch tabs here
+      // Note: In real extension, we would use chrome.tabs.update to switch tabs here
       await new Promise(r => setTimeout(r, 500));
       
       addLog(`[Inject] Sending payload to Active Tab...`);
       
-      // *** MIGRATION KEYPOINT: Sending Message ***
-      // In real extension: chrome.tabs.sendMessage(tabId, { action: "INJECT_TEXT", payload: ... })
-      mockChrome.sendMessageToTab(1, { 
+      // *** UPDATED: Using the generic Active Tab method ***
+      mockChrome.sendMessageToActiveTab({ 
         action: "INJECT_TEXT", 
         payload: transformedData 
       });

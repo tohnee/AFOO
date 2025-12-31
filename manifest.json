@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "Synapse: The Neuro-Pipe",
+  "version": "2.1.0",
+  "description": "Antifragile AI Workflow Orchestrator. Connect Kimi, DeepSeek, and more.",
+  "permissions": [
+    "sidePanel",
+    "scripting",
+    "activeTab",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://chat.kimi.ai/*",
+    "https://chat.deepseek.com/*",
+    "https://claude.ai/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "side_panel": {
+    "default_path": "index.html"
+  },
+  "action": {
+    "default_title": "Open Synapse Sidebar"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chat.kimi.ai/*",
+        "https://chat.deepseek.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+}
