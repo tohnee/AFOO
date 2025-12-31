@@ -1,0 +1,5 @@
+{
+  "name": "AFFO（AI File Operations Orchestrator）",
+  "description": "An AI-era 'Unix Shell' browser extension simulation. Orchestrate workflows across isolated chatbots, featuring antifragile DOM handling and intelligent pipelines.",
+  "requestFramePermissions": []
+}
